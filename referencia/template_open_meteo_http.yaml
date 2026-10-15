@@ -1,0 +1,470 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 1c46e1ca0378480584f6037f56be9723
+      name: Templates/Applications
+  templates:
+    - uuid: 6f0e7edd86c64d27bae4af4021d9163e
+      template: 'Open-Meteo by HTTP'
+      name: 'Open-Meteo by HTTP'
+      description: |
+        Monitors current weather conditions for a location using the free Open-Meteo forecast API (https://open-meteo.com).
+        No API key is required. Set {$OPENMETEO.LATITUDE} and {$OPENMETEO.LONGITUDE} on the host to the location you want to monitor.
+        The defaults point to Mérida, Yucatán, Mexico.
+
+        Template created for the CCOSS 2026 contribution workshop.
+      vendor:
+        name: 'Zabbix Latam'
+        version: 7.0-0
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 6a653b0cbc63404a9487e80563f4d408
+          name: 'Weather: Apparent temperature'
+          type: DEPENDENT
+          key: openmeteo.temperature.apparent
+          delay: '0'
+          value_type: FLOAT
+          units: °C
+          description: 'Apparent ("feels like") temperature at 2 meters above ground, combining air temperature, humidity and wind.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.apparent_temperature
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
+          triggers:
+            - uuid: 243dab174dfe456b860b08f3174a1731
+              expression: 'min(/Open-Meteo by HTTP/openmeteo.temperature.apparent,30m)>{$OPENMETEO.TEMP.APPARENT.MAX.CRIT}'
+              name: 'Weather: Extreme heat'
+              event_name: 'Weather: Extreme heat (apparent temperature over {$OPENMETEO.TEMP.APPARENT.MAX.CRIT}°C for 30m)'
+              opdata: 'Feels like: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'The apparent temperature has stayed above {$OPENMETEO.TEMP.APPARENT.MAX.CRIT}°C for 30 minutes. Risk of heat stroke for people working outdoors.'
+              tags:
+                - tag: scope
+                  value: notice
+            - uuid: a21021542cdc411482ca81e0b73f3904
+              expression: 'min(/Open-Meteo by HTTP/openmeteo.temperature.apparent,30m)>{$OPENMETEO.TEMP.APPARENT.MAX.WARN}'
+              name: 'Weather: High apparent temperature'
+              event_name: 'Weather: High apparent temperature (over {$OPENMETEO.TEMP.APPARENT.MAX.WARN}°C for 30m)'
+              opdata: 'Feels like: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'The apparent temperature has stayed above {$OPENMETEO.TEMP.APPARENT.MAX.WARN}°C for 30 minutes.'
+              dependencies:
+                - name: 'Weather: Extreme heat'
+                  expression: 'min(/Open-Meteo by HTTP/openmeteo.temperature.apparent,30m)>{$OPENMETEO.TEMP.APPARENT.MAX.CRIT}'
+              tags:
+                - tag: scope
+                  value: notice
+        - uuid: 24f85a0755b84ac6a3920e3be57b5cd8
+          name: 'Weather: Get current conditions'
+          type: HTTP_AGENT
+          key: openmeteo.current.get
+          delay: 15m
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          description: 'Master item: raw JSON with the current conditions returned by the Open-Meteo forecast API. Open-Meteo refreshes current data every 15 minutes. Dependent items extract individual metrics.'
+          url: 'https://api.open-meteo.com/v1/forecast'
+          query_fields:
+            - name: latitude
+              value: '{$OPENMETEO.LATITUDE}'
+            - name: longitude
+              value: '{$OPENMETEO.LONGITUDE}'
+            - name: current
+              value: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,uv_index'
+            - name: timezone
+              value: auto
+          http_proxy: '{$OPENMETEO.HTTP.PROXY}'
+          timeout: '{$OPENMETEO.TIMEOUT}'
+          tags:
+            - tag: component
+              value: raw
+          triggers:
+            - uuid: 700eeac62e864291b0f4264702662cc0
+              expression: 'nodata(/Open-Meteo by HTTP/openmeteo.current.get,1h)=1'
+              name: 'Weather: Failed to fetch weather data'
+              event_name: 'Weather: Failed to fetch weather data (or no data for 1h)'
+              priority: WARNING
+              description: 'Zabbix has not received data from the Open-Meteo API for the last hour. Check internet access from the Zabbix server or proxy, and the coordinates in {$OPENMETEO.LATITUDE} and {$OPENMETEO.LONGITUDE}.'
+              tags:
+                - tag: scope
+                  value: availability
+        - uuid: b2563c0c424b426c8cdbc605db198826
+          name: 'Weather: Relative humidity'
+          type: DEPENDENT
+          key: openmeteo.humidity
+          delay: '0'
+          value_type: FLOAT
+          units: '%'
+          description: 'Relative humidity at 2 meters above ground, in %.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.relative_humidity_2m
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
+        - uuid: 0a64df5bcbeb46dcadd5887bce660ae4
+          name: 'Weather: Precipitation'
+          type: DEPENDENT
+          key: openmeteo.precipitation
+          delay: '0'
+          value_type: FLOAT
+          units: mm
+          description: 'Total precipitation (rain, showers, snow) in the preceding 15 minutes, in millimeters.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.precipitation
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
+        - uuid: da023ce9b29a47b48c0a8afa65376b41
+          name: 'Weather: Temperature'
+          type: DEPENDENT
+          key: openmeteo.temperature
+          delay: '0'
+          value_type: FLOAT
+          units: °C
+          description: 'Air temperature at 2 meters above ground.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.temperature_2m
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
+        - uuid: 2fe76d49d6db4a3e818c72dd841145f8
+          name: 'Weather: UV index'
+          type: DEPENDENT
+          key: openmeteo.uv.index
+          delay: '0'
+          value_type: FLOAT
+          description: 'UV index. 0-2 low, 3-5 moderate, 6-7 high, 8-10 very high, 11+ extreme.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.uv_index
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
+          triggers:
+            - uuid: 29d36107484d40f3aa689d5912f9cda5
+              expression: 'min(/Open-Meteo by HTTP/openmeteo.uv.index,30m)>={$OPENMETEO.UV.INDEX.MAX.WARN}'
+              name: 'Weather: Very high UV index'
+              event_name: 'Weather: Very high UV index ({$OPENMETEO.UV.INDEX.MAX.WARN} or more for 30m)'
+              opdata: 'UV index: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'The UV index has been {$OPENMETEO.UV.INDEX.MAX.WARN} or higher for 30 minutes. Unprotected skin can burn in minutes.'
+              tags:
+                - tag: scope
+                  value: notice
+        - uuid: 5558351adc29445c91bbb08863c5a9db
+          name: 'Weather: Weather condition'
+          type: DEPENDENT
+          key: openmeteo.weather.code
+          delay: '0'
+          trends: '0'
+          description: 'Current weather condition as a WMO weather interpretation code (0 - clear sky, 61 - slight rain, 95 - thunderstorm...).'
+          valuemap:
+            name: 'WMO weather code'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.weather_code
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
+          triggers:
+            - uuid: ed183ae54c464fbbb7ac98db746044f9
+              expression: 'last(/Open-Meteo by HTTP/openmeteo.weather.code)>=95'
+              name: 'Weather: Thunderstorm'
+              opdata: 'Condition: {ITEM.LASTVALUE1}'
+              priority: AVERAGE
+              description: 'Open-Meteo reports a thunderstorm (WMO code 95 or higher) at the monitored location.'
+              tags:
+                - tag: scope
+                  value: notice
+        - uuid: 9ecdeaecb9454524af4ba3f00731860b
+          name: 'Weather: Wind speed'
+          type: DEPENDENT
+          key: openmeteo.wind.speed
+          delay: '0'
+          value_type: FLOAT
+          units: km/h
+          description: 'Wind speed at 10 meters above ground, in km/h.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.wind_speed_10m
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
+          triggers:
+            - uuid: 0debade6f488405da5692d79081602bd
+              expression: 'min(/Open-Meteo by HTTP/openmeteo.wind.speed,30m)>{$OPENMETEO.WIND.SPEED.MAX.WARN}'
+              name: 'Weather: Strong wind'
+              event_name: 'Weather: Strong wind (over {$OPENMETEO.WIND.SPEED.MAX.WARN} km/h for 30m)'
+              opdata: 'Wind speed: {ITEM.LASTVALUE1}'
+              priority: AVERAGE
+              description: 'Wind speed has stayed above {$OPENMETEO.WIND.SPEED.MAX.WARN} km/h for 30 minutes.'
+              tags:
+                - tag: scope
+                  value: notice
+      tags:
+        - tag: class
+          value: software
+        - tag: target
+          value: open-meteo
+        - tag: target
+          value: weather
+      macros:
+        - macro: '{$OPENMETEO.HTTP.PROXY}'
+          description: 'HTTP proxy for requests to the Open-Meteo API. Leave empty for direct access.'
+        - macro: '{$OPENMETEO.LATITUDE}'
+          value: '20.97'
+          description: 'Latitude of the monitored location, in decimal degrees. Default: Mérida, Yucatán.'
+        - macro: '{$OPENMETEO.LONGITUDE}'
+          value: '-89.62'
+          description: 'Longitude of the monitored location, in decimal degrees. Default: Mérida, Yucatán.'
+        - macro: '{$OPENMETEO.TEMP.APPARENT.MAX.CRIT}'
+          value: '45'
+          description: 'Critical threshold of the apparent temperature, in °C.'
+        - macro: '{$OPENMETEO.TEMP.APPARENT.MAX.WARN}'
+          value: '40'
+          description: 'Warning threshold of the apparent temperature, in °C.'
+        - macro: '{$OPENMETEO.TIMEOUT}'
+          value: 10s
+          description: 'Timeout of requests to the Open-Meteo API.'
+        - macro: '{$OPENMETEO.UV.INDEX.MAX.WARN}'
+          value: '8'
+          description: 'Warning threshold of the UV index.'
+        - macro: '{$OPENMETEO.WIND.SPEED.MAX.WARN}'
+          value: '50'
+          description: 'Warning threshold of the wind speed, in km/h.'
+      dashboards:
+        - uuid: 9872270d2aca4b98a44695369d804e86
+          name: 'Weather: Overview'
+          pages:
+            - widgets:
+                - type: item
+                  name: Condition
+                  width: '24'
+                  height: '3'
+                  fields:
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Open-Meteo by HTTP'
+                        key: openmeteo.weather.code
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: show.1
+                      value: '3'
+                - type: gauge
+                  name: Temperature
+                  x: '24'
+                  width: '16'
+                  height: '4'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '1'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Open-Meteo by HTTP'
+                        key: openmeteo.temperature
+                    - type: STRING
+                      name: min
+                      value: '0'
+                    - type: STRING
+                      name: max
+                      value: '50'
+                    - type: STRING
+                      name: thresholds.0.color
+                      value: 7499FF
+                    - type: STRING
+                      name: thresholds.0.threshold
+                      value: '0'
+                    - type: STRING
+                      name: thresholds.1.color
+                      value: 00C48C
+                    - type: STRING
+                      name: thresholds.1.threshold
+                      value: '18'
+                    - type: STRING
+                      name: thresholds.2.color
+                      value: FFBF59
+                    - type: STRING
+                      name: thresholds.2.threshold
+                      value: '32'
+                    - type: STRING
+                      name: thresholds.3.color
+                      value: E45959
+                    - type: STRING
+                      name: thresholds.3.threshold
+                      value: '40'
+                - type: gauge
+                  name: Humidity
+                  x: '40'
+                  width: '16'
+                  height: '4'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Open-Meteo by HTTP'
+                        key: openmeteo.humidity
+                    - type: STRING
+                      name: min
+                      value: '0'
+                    - type: STRING
+                      name: max
+                      value: '100'
+                - type: gauge
+                  name: 'UV index'
+                  x: '56'
+                  width: '16'
+                  height: '4'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '1'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'Open-Meteo by HTTP'
+                        key: openmeteo.uv.index
+                    - type: STRING
+                      name: min
+                      value: '0'
+                    - type: STRING
+                      name: max
+                      value: '12'
+                    - type: STRING
+                      name: thresholds.0.color
+                      value: 00C48C
+                    - type: STRING
+                      name: thresholds.0.threshold
+                      value: '0'
+                    - type: STRING
+                      name: thresholds.1.color
+                      value: FFBF59
+                    - type: STRING
+                      name: thresholds.1.threshold
+                      value: '6'
+                    - type: STRING
+                      name: thresholds.2.color
+                      value: E45959
+                    - type: STRING
+                      name: thresholds.2.threshold
+                      value: '8'
+                - type: svggraph
+                  name: Temperature
+                  y: '4'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Weather: Temperature'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Weather: Apparent temperature'
+                    - type: STRING
+                      name: reference
+                      value: AAAAA
+                - type: svggraph
+                  name: 'Wind and precipitation'
+                  x: '36'
+                  y: '4'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Weather: Wind speed'
+                    - type: STRING
+                      name: ds.1.items.0
+                      value: 'Weather: Precipitation'
+                    - type: INTEGER
+                      name: ds.1.axisy
+                      value: '1'
+                    - type: STRING
+                      name: reference
+                      value: AAAAB
+                - type: problems
+                  name: 'Current problems'
+                  y: '9'
+                  width: '72'
+                  height: '4'
+                  fields:
+                    - type: INTEGER
+                      name: show_tags
+                      value: '3'
+      valuemaps:
+        - uuid: 644b4657fe82406883118b8b8efd4816
+          name: 'WMO weather code'
+          mappings:
+            - value: '0'
+              newvalue: 'Clear sky'
+            - value: '1'
+              newvalue: 'Mainly clear'
+            - value: '2'
+              newvalue: 'Partly cloudy'
+            - value: '3'
+              newvalue: Overcast
+            - value: '45'
+              newvalue: Fog
+            - value: '48'
+              newvalue: 'Depositing rime fog'
+            - value: '51'
+              newvalue: 'Light drizzle'
+            - value: '53'
+              newvalue: 'Moderate drizzle'
+            - value: '55'
+              newvalue: 'Dense drizzle'
+            - value: '61'
+              newvalue: 'Slight rain'
+            - value: '63'
+              newvalue: 'Moderate rain'
+            - value: '65'
+              newvalue: 'Heavy rain'
+            - value: '80'
+              newvalue: 'Slight rain showers'
+            - value: '81'
+              newvalue: 'Moderate rain showers'
+            - value: '82'
+              newvalue: 'Violent rain showers'
+            - value: '95'
+              newvalue: Thunderstorm
+            - value: '96'
+              newvalue: 'Thunderstorm with slight hail'
+            - value: '99'
+              newvalue: 'Thunderstorm with heavy hail'
