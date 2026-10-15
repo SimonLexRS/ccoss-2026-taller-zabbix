@@ -1,0 +1,170 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: e77b831970da4548ab0b7218d4a4beeb
+      name: 'Templates/Applications'
+  templates:
+    - uuid: acb4a380bbf44f15a96e9495bd9a48aa
+      template: 'Open-Meteo by HTTP'
+      name: 'Open-Meteo by HTTP'
+      description: 'Monitors current weather conditions using the Open-Meteo API.'
+      groups:
+        - name: 'Templates/Applications'
+      items:
+        - uuid: 4759723c9d60484c84f7c72aab3abb44
+          name: 'Weather: Get current conditions'
+          type: HTTP_AGENT
+          key: openmeteo.current.get
+          delay: 15m
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          url: 'https://api.open-meteo.com/v1/forecast'
+          query_fields:
+            - name: latitude
+              value: '{$OPENMETEO.LATITUDE}'
+            - name: longitude
+              value: '{$OPENMETEO.LONGITUDE}'
+            - name: current
+              value: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,uv_index'
+            - name: timezone
+              value: auto
+          tags:
+            - tag: component
+              value: raw
+        - uuid: e276dc148b074da8b95f04c947f5cf1b
+          name: 'Weather: Relative humidity'
+          type: DEPENDENT
+          key: openmeteo.humidity
+          delay: '0'
+          value_type: FLOAT
+          units: '%'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.relative_humidity_2m
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: enviroment
+        - uuid: 9333809a62c841e9ae72196485254400
+          name: 'Weather: Temperature'
+          type: DEPENDENT
+          key: openmeteo.temperature
+          delay: '0'
+          value_type: FLOAT
+          units: °C
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.temperature_2m
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: enviroment
+        - uuid: f023546fff444173902a43eb5af92de0
+          name: 'Weather: Apparent temperature'
+          type: DEPENDENT
+          key: openmeteo.temperature.apparent
+          delay: '0'
+          value_type: FLOAT
+          units: °C
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.apparent_temperature
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: enviroment
+          triggers:
+            - uuid: bbb1c4a11e23468da54522ed80e89889
+              expression: 'min(/Open-Meteo by HTTP - /openmeteo.temperature.apparent,30m)>{$OPENMETEO.TEMP.APPARENT.MAX.WARN}'
+              name: 'Weather: High apparent temperature'
+              event_name: 'Weather: High apparent temperature (over {$OPENMETEO.TEMP.APPARENT.MAX.WARN}°C for 30m)'
+              opdata: 'Feels like: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              tags:
+                - tag: scope
+                  value: notice
+        - uuid: 2631905ed5aa48acb651ec209602a8f1
+          name: 'Weather: Weather condition'
+          type: DEPENDENT
+          key: openmeteo.weather.code
+          delay: '0'
+          valuemap:
+            name: 'WMO weather code'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.weather_code
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          master_item:
+            key: openmeteo.current.get
+        - uuid: 6f8a561b0d054e0d9b1f3c1d1c3c59bf
+          name: 'Weather: Wind speed'
+          type: DEPENDENT
+          key: openmeteo.wind.speed
+          delay: '0'
+          value_type: FLOAT
+          units: km/h
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current.wind_speed_10m
+          master_item:
+            key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: enviroment
+          triggers:
+            - uuid: cc8ad38930814efea020eb9163d116e6
+              expression: 'min(/Open-Meteo by HTTP - /openmeteo.wind.speed,30m)>{$OPENMETEO.WIND.SPEED.MAX.WARN}'
+              name: 'Weather: Strong wind'
+              priority: AVERAGE
+              tags:
+                - tag: scope
+                  value: notice
+      tags:
+        - tag: class
+          value: software
+        - tag: target
+          value: open-meteo
+      macros:
+        - macro: '{$OPENMETEO.LATITUDE}'
+          value: '20.97'
+          description: 'Latitude of the monitored location.'
+        - macro: '{$OPENMETEO.LONGITUDE}'
+          value: '-89.62'
+          description: 'Longitude of the monitored location.'
+        - macro: '{$OPENMETEO.TEMP.APPARENT.MAX.WARN}'
+          value: '40'
+          description: 'Warning threshold of the apparent temperature, in °C.'
+        - macro: '{$OPENMETEO.WIND.SPEED.MAX.WARN}'
+          value: '50'
+          description: 'Warning threshold of the wind speed, in km/h.'
+      valuemaps:
+        - uuid: 758092d3ae05452b8f1eb112e6d24a79
+          name: 'WMO weather code'
+          mappings:
+            - value: '0'
+              newvalue: 'Clear sky'
+            - value: '1'
+              newvalue: 'Mainly clear'
+            - value: '2'
+              newvalue: 'Partly cloudy'
+            - value: '3'
+              newvalue: Overcast
+            - value: '61'
+              newvalue: 'Slight rain'
+            - value: '63'
+              newvalue: 'Moderate rain'
+            - value: '65'
+              newvalue: 'Heavy rain'
+            - value: '95'
+              newvalue: Thunderstorm
