@@ -23,7 +23,7 @@ Recibirás algo así:
 | Tu host de práctica | `ccoss07` |
 | Tu grupo | `CCOSS 2026/ccoss07` |
 
-Entra a Zabbix con tu usuario. Si quieres la interfaz en español: tu avatar → *User settings* → *Language*.
+Entra a Zabbix con tu usuario. Si quieres la interfaz en español: *User settings* → *Profile* → *Language*.
 
 > Todo lo que crees debe llevar tu sufijo, por ejemplo `Open-Meteo by HTTP - ccoss07`. En Zabbix los nombres de template son únicos en toda la instancia, y somos muchos en la misma.
 
