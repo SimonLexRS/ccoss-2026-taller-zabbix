@@ -2,7 +2,7 @@
 
 Guía del taller · CCOSS 2026 · Mérida, Yucatán
 
-> Sigue esta guía a tu ritmo. Si te atoras, al final de cada parte hay un ✅ **checkpoint**: avísalo o levanta la mano. Si te quedas atrás, puedes importar el template de referencia y saltar a la parte 4.
+> Sigue esta guía a tu ritmo. Si te atoras, al final de cada parte hay un ✅ **checkpoint**: avísalo o levanta la mano. Si te quedas atrás, puedes importar el template de referencia y saltar a la parte 3.
 
 ---
 
@@ -122,7 +122,8 @@ Abre tu template → *Items* → *Create item*
 | Query fields | `latitude` = `{$OPENMETEO.LATITUDE}`<br>`longitude` = `{$OPENMETEO.LONGITUDE}`<br>`current` = `temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,uv_index`<br>`timezone` = `auto` |
 | Update interval | `15m` |
 | History | `Do not store` |
-| Tags | `component` = `raw` |
+| Description | `Master item: raw JSON with the current conditions from the Open-Meteo API.` |
+| Tags (pestaña **Tags**) | `component` = `raw` |
 
 Antes de guardar, pulsa **Test** → **Get value and test**. Deberías ver el JSON. 🎉
 
@@ -132,26 +133,30 @@ Antes de guardar, pulsa **Test** → **Get value and test**. Deberías ver el JS
 
 ### 2.3 · Items dependientes
 
-*Create item* para cada uno. Lo común a todos:
+*Create item* para cada uno. Cada item se completa en **tres pestañas**:
 
-- **Type:** `Dependent item`
-- **Master item:** `Weather: Get current conditions`
-- **Type of information:** `Numeric (float)`
-- Pestaña **Preprocessing** → *Add* → `JSONPath` con la ruta de la tabla
-- **Tags:** `component` = `environment`
+1. Pestaña **Item**
+   - **Type:** `Dependent item`
+   - **Master item:** `Weather: Get current conditions`
+   - **Type of information:** `Numeric (float)`
+   - **Name**, **Key**, **Units** y **Description**: de la tabla de abajo
+2. Pestaña **Tags** → `component` = `environment`
+3. Pestaña **Preprocessing** → *Add* → `JSONPath` → la ruta de la tabla
 
-| Name | Key | Units | JSONPath |
-|---|---|---|---|
-| `Weather: Temperature` | `openmeteo.temperature` | `°C` | `$.current.temperature_2m` |
-| `Weather: Apparent temperature` | `openmeteo.temperature.apparent` | `°C` | `$.current.apparent_temperature` |
-| `Weather: Relative humidity` | `openmeteo.humidity` | `%` | `$.current.relative_humidity_2m` |
-| `Weather: Wind speed` | `openmeteo.wind.speed` | `km/h` | `$.current.wind_speed_10m` |
+> ⚠️ **No olvides la pestaña Tags.** Es lo que más se olvida, y la revisión automática del PR lo marca como error.
 
-> ⚡ Truco: crea el primero, ábrelo y usa **Clone** para los demás. Solo cambias nombre, key, unidades y JSONPath.
+| Name | Key | Units | JSONPath | Description |
+|---|---|---|---|---|
+| `Weather: Temperature` | `openmeteo.temperature` | `°C` | `$.current.temperature_2m` | `Air temperature at 2 meters above ground.` |
+| `Weather: Apparent temperature` | `openmeteo.temperature.apparent` | `°C` | `$.current.apparent_temperature` | `Apparent ("feels like") temperature, combining air temperature, humidity and wind.` |
+| `Weather: Relative humidity` | `openmeteo.humidity` | `%` | `$.current.relative_humidity_2m` | `Relative humidity at 2 meters above ground, in %.` |
+| `Weather: Wind speed` | `openmeteo.wind.speed` | `km/h` | `$.current.wind_speed_10m` | `Wind speed at 10 meters above ground, in km/h.` |
+
+> ⚡ Truco: crea el primero completo (con su tag), ábrelo y usa **Clone** para los demás. El clon conserva el tag; solo cambias nombre, key, unidades, descripción y JSONPath.
 
 > 💡 Nombres `Recurso: Métrica` en *sentence case*, keys en minúsculas con puntos, y unidades en el campo *Units* (nunca dentro del nombre). Es lo que pide la guía, y es lo primero que mira un revisor.
 
-✅ **Checkpoint 2:** tienes 5 items en el template (1 maestro + 4 dependientes).
+✅ **Checkpoint 2:** tienes 5 items en el template (1 maestro + 4 dependientes). En la lista de items, la columna *Tags* muestra `component: environment` en los 4 dependientes.
 
 ### 2.4 · Value map: de números a palabras
 
@@ -168,8 +173,9 @@ Open-Meteo devuelve el estado del cielo como un código WMO (`0` = despejado, `6
 | Key | `openmeteo.weather.code` |
 | Type of information | `Numeric (unsigned)` |
 | Value mapping | `WMO weather code` |
-| JSONPath | `$.current.weather_code` |
-| + Preprocessing | `Discard unchanged with heartbeat` = `6h` |
+| Description | `Current weather condition as a WMO weather code.` |
+| Tags (pestaña **Tags**) | `component` = `environment` |
+| Preprocessing | 1. `JSONPath` = `$.current.weather_code`<br>2. `Discard unchanged with heartbeat` = `6h` |
 
 > 💡 *Discard unchanged with heartbeat* evita guardar el mismo valor cada 15 minutos si el cielo no cambia, pero guarda al menos uno cada 6 h.
 
@@ -231,6 +237,8 @@ Open-Meteo devuelve el estado del cielo como un código WMO (`0` = despejado, `6
 2. Cambia el grupo `CCOSS 2026/ccossNN` por `Templates/Applications`.
 3. Guárdalo como `template_open_meteo_http.yaml`.
 
+> ⚠️ El nombre del archivo en tu computadora es **solo** `template_open_meteo_http.yaml`, sin carpetas ni `/`. Las carpetas se crean después en GitHub. En Mac, un `/` en el nombre de un archivo se convierte en `:` y GitHub termina creando un archivo llamado `participantes:usuario:...`.
+
 > 💡 Mira el YAML: es texto plano, versionable, revisable línea por línea en un PR. Eso es "monitoreo como código".
 
 ### 3.2 · El README
@@ -269,14 +277,36 @@ Zabbix version: 7.0 and higher.
 
 Hoy enviamos el PR a un **repositorio de práctica**, no al repo oficial: 40 PRs idénticos con el clima de Mérida no le hacen ningún favor a los mantenedores. 😉
 
-1. Abre **https://github.com/fvilarnovo/ccoss-2026-taller-zabbix** → **Fork** → *Create fork*.
-2. En tu fork: *Add file → Create new file*. Como nombre escribe `participantes/<tu-usuario-github>/README.md` (las `/` crean carpetas) y pega tu README.
-3. *Commit changes…* → elige **Create a new branch** (`mi-template`) → *Propose changes*.
-4. En la nueva rama: *Add file → Upload files* → sube tu `template_open_meteo_http.yaml` a la misma carpeta → *Commit*.
-5. **Contribute → Open pull request**. Título: `Add Open-Meteo by HTTP template (<tu-usuario>)`. En la descripción, cuenta qué hace y cómo lo probaste.
-6. Mira la pestaña **Checks**: una revisión automática valida tu YAML. Si sale ❌, abre el detalle, corrige el archivo en tu rama, y el PR se actualiza solo.
+Ten a mano los dos archivos: `template_open_meteo_http.yaml` (3.1) y el texto del README (3.2).
 
-> ¿Prefieres la terminal? `git clone`, `git checkout -b mi-template`, `git add`, `git commit`, `git push` y abre el PR desde GitHub. Es lo mismo.
+**1 · Fork.** Abre **https://github.com/fvilarnovo/ccoss-2026-taller-zabbix** → botón **Fork** (arriba a la derecha) → *Create fork*. Ahora tienes una copia en `github.com/<tu-usuario>/ccoss-2026-taller-zabbix`. Todo lo que sigue se hace **en tu fork**.
+
+**2 · Crear el README y tu rama.**
+- *Add file → Create new file*.
+- En el nombre escribe `participantes/<tu-usuario-github>/README.md`. Cada `/` que escribes crea una carpeta: vas a ver cómo se arma la ruta.
+- Pega el README.
+- *Commit changes…* → elige **Create a new branch for this commit and start a pull request** → nómbrala `mi-template` → *Propose changes*.
+- GitHub te lleva a la pantalla *Open a pull request*. **Todavía no lo crees**: primero falta el template. Vuelve a la página de tu fork.
+
+**3 · Subir el template.**
+- Arriba a la izquierda, en el selector que dice `main`, elige **`mi-template`**.
+- Entra a `participantes/<tu-usuario-github>/`.
+- *Add file → Upload files* → arrastra `template_open_meteo_http.yaml`.
+- *Commit changes*, elige **Commit directly to the `mi-template` branch**.
+
+**4 · Abrir el Pull Request.**
+- Aparece un aviso amarillo: *"mi-template had recent pushes"* → **Compare & pull request**. Si no aparece: pestaña *Pull requests → New pull request*.
+- Revisa la línea de arriba: **base repository** `fvilarnovo/ccoss-2026-taller-zabbix`, **base** `main` ← **head repository** `<tu-usuario>/ccoss-2026-taller-zabbix`, **compare** `mi-template`.
+- En *Files changed* deben aparecer **solo 2 archivos**, los dos dentro de `participantes/<tu-usuario-github>/`.
+- Título: `Add Open-Meteo by HTTP template (<tu-usuario>)`. En la descripción, cuenta qué hace y cómo lo probaste.
+- **Create pull request**.
+
+**5 · Revisión automática.**
+- En el PR aparece el check **Revisión del template**. Tarda unos 30 segundos.
+- Si sale ❌: *Details* → abre el paso *Revisar templates modificados* y lee los mensajes. Los ❌ son obligatorios; los 💡 son sugerencias.
+- Para corregir: si el error es del template (por ejemplo, falta un tag), corrígelo en Zabbix y vuelve a exportar. Luego, en tu fork, en la rama `mi-template`, abre el archivo → ícono de lápiz (o *Upload files* de nuevo con el mismo nombre) → *Commit directly to the `mi-template` branch*. El PR se vuelve a revisar solo.
+
+> ¿Prefieres la terminal? `git clone` de tu fork, `git checkout -b mi-template`, copia los archivos, `git add`, `git commit`, `git push` y abre el PR desde GitHub. Es lo mismo.
 
 ✅ **Checkpoint 5:** tienes un PR abierto con el check en verde.
 
