@@ -2,7 +2,7 @@
 
 Guía del taller · CCOSS 2026 · Mérida, Yucatán
 
-> Sigue esta guía a tu ritmo. Si te atoras, al final de cada parte hay un ✅ **checkpoint**: avísalo en el chat o levanta la mano. Si te quedas atrás, puedes importar el template de referencia y saltar a la parte 4.
+> Sigue esta guía a tu ritmo. Si te atoras, al final de cada parte hay un ✅ **checkpoint**: avísalo o levanta la mano. Si te quedas atrás, puedes importar el template de referencia y saltar a la parte 4.
 
 ---
 
