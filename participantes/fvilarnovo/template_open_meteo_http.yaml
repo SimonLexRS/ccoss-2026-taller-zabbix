@@ -45,6 +45,9 @@ zabbix_export:
                 - $.current.relative_humidity_2m
           master_item:
             key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
         - uuid: c5b0b7613d594688b7308a4d4c6ca9de
           name: 'Weather: Temperature'
           type: DEPENDENT
@@ -58,6 +61,9 @@ zabbix_export:
                 - $.current.temperature_2m
           master_item:
             key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
         - uuid: d735c5ddef6d4465aabf4d1f4fe45c06
           name: 'Weather: Apparent temperature'
           type: DEPENDENT
@@ -71,6 +77,9 @@ zabbix_export:
                 - $.current.apparent_temperature
           master_item:
             key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
           triggers:
             - uuid: 65144185f6624cf0bb68af081b6f70e5
               expression: 'min(/Open-Meteo by HTTP/openmeteo.temperature.apparent,30m)>{$OPENMETEO.TEMP.APPARENT.MAX.WARN}'
@@ -98,6 +107,9 @@ zabbix_export:
                 - 6h
           master_item:
             key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
         - uuid: f9dc44aee36540ac93fb24c8463ef427
           name: 'Weather: Wind speed'
           type: DEPENDENT
@@ -111,6 +123,9 @@ zabbix_export:
                 - $.current.wind_speed_10m
           master_item:
             key: openmeteo.current.get
+          tags:
+            - tag: component
+              value: environment
           triggers:
             - uuid: a0d6cd131b094f12821876dc91fa48e2
               expression: 'min(/Open-Meteo by HTTP/openmeteo.wind.speed,30m)>{$OPENMETEO.WIND.SPEED.MAX.WARN}'
