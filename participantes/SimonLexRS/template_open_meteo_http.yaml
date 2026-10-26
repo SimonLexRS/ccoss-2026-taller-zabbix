@@ -5,8 +5,8 @@ zabbix_export:
       name: 'CCOSS 2026/ccoss03'
   templates:
     - uuid: 024a57fa61c54a59846161724682bb9a
-      template: 'Open-Meteo by HTTP '
-      name: 'Open-Meteo by HTTP '
+      template: 'Open-Meteo by HTTP'
+      name: 'Open-Meteo by HTTP'
       description: 'Monitors current weather conditions using the Open-Meteo API.'
       groups:
         - name: 'CCOSS 2026/ccoss03'
@@ -84,7 +84,7 @@ zabbix_export:
               value: environment
           triggers:
             - uuid: 646dafa297264b4ba9e197ff9e10eba7
-              expression: 'min(/Open-Meteo by HTTP /openmeteo.temperature.apparent,30m)>{$OPENMETEO.TEMP.APPARENT.MAX.WARN}'
+              expression: 'min(/Open-Meteo by HTTP/openmeteo.temperature.apparent,30m)>{$OPENMETEO.TEMP.APPARENT.MAX.WARN}'
               name: 'Weather: High apparent temperature'
               event_name: 'Weather: High apparent temperature (over {$OPENMETEO.TEMP.APPARENT.MAX.WARN}°C for 30m)'
               opdata: 'Feels like: {ITEM.LASTVALUE1}'
@@ -131,7 +131,7 @@ zabbix_export:
               value: environment
           triggers:
             - uuid: 2f111641629d4c229ea1e3cffca125d9
-              expression: 'min(/Open-Meteo by HTTP /openmeteo.wind.speed,30m)>{$OPENMETEO.WIND.SPEED.MAX.WARN}'
+              expression: 'min(/Open-Meteo by HTTP/openmeteo.wind.speed,30m)>{$OPENMETEO.WIND.SPEED.MAX.WARN}'
               name: 'Weather: Strong wind'
               priority: AVERAGE
               tags:
